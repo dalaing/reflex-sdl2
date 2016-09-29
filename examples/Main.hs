@@ -147,4 +147,4 @@ main = do
   initializeAll
   window <- createWindow "My SDL Application" defaultWindow
   renderer <- createRenderer window (-1) defaultRenderer
-  sdlHost renderer guest
+  sdlHost renderer (Just 60) guest

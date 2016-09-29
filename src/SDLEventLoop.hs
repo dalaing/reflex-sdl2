@@ -20,6 +20,7 @@ import Control.Monad (forever, when, forM, void)
 import Control.Monad.Ref
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.Reader
+import Control.Concurrent (threadDelay)
 import Data.Functor.Identity
 
 import Data.GADT.Show
@@ -49,35 +50,44 @@ type SDLApp t m =
   ) => EventSelector t SDLEvent
     -> ReaderT S.Renderer (PostBuildT t (PerformEventT t m)) (Event t ())
 
-sdlHost :: S.Renderer -> (forall t m. SDLApp t m) -> IO ()
-sdlHost r myGuest = do
+sdlHost :: S.Renderer -> Maybe Int -> (forall t m. SDLApp t m) -> IO ()
+sdlHost r mFps guest = do
   runSpiderHost $ do
-    (postBuild, postBuildTriggerRef) <- newEventWithTriggerRef
+    (ePostBuild, ePostBuildTriggerRef) <- newEventWithTriggerRef
     (eSdl, eSdlTriggerRef) <- newEventWithTriggerRef
 
-    let 
-      g = myGuest (fan $ wrapEvent <$> eSdl)
+    let
+      g = guest (fan $ wrapEvent <$> eSdl)
 
-    (eQuit, FireCommand fire) <- hostPerformEventT $ runPostBuildT (runReaderT g r) postBuild
+    (eQuit, FireCommand fire) <- hostPerformEventT $ runPostBuildT (runReaderT g r) ePostBuild
     hQuit <- subscribeEvent eQuit
 
-    let 
+    let
       readPhase = readEvent hQuit >>= sequence
-
       canContinue = maybe True (all isNothing)
 
       loop = do
-        e <- liftIO SE.waitEvent
+        tStart <- liftIO S.ticks
+
+        es <- liftIO SE.pollEvents
+
         mESdlTrigger <- readRef eSdlTriggerRef
-        quit <- forM mESdlTrigger $ \t -> 
-          fire [t :=> Identity e] $ readPhase
-        when (canContinue quit) loop
+        quit <- forM mESdlTrigger $ \t ->
+          traverse (\e -> fire [t :=> Identity e] readPhase) es
 
-    mPostBuildTrigger <- readRef postBuildTriggerRef
-    postBuildQuit <- forM mPostBuildTrigger $ \t ->
-      fire [t :=> Identity ()] $ readPhase
+        tEnd <- liftIO S.ticks
 
-    when (canContinue postBuildQuit) loop
+        let
+          tElapsed = fromIntegral $ 1000 * (tEnd - tStart)
+          tTarget = maybe tElapsed (1000000 `div`) mFps
+        when (tElapsed < tTarget) $ liftIO $ threadDelay (tTarget - tElapsed)
+
+        when (maybe True (all isNothing . mconcat) quit) loop
+
+    mPostBuildTrigger <- readRef ePostBuildTriggerRef
+    quit <- forM mPostBuildTrigger $ \t ->
+      fire [t :=> Identity ()] readPhase
+    when (canContinue quit) loop
 
     return ()
 
