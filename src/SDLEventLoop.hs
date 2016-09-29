@@ -13,7 +13,7 @@ module SDLEventLoop (
   , sdlHost
   ) where
 
-import Data.Maybe (isNothing, fromMaybe, mapMaybe)
+import Data.Maybe (isNothing, mapMaybe)
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad (forever, when, forM, void)
@@ -40,8 +40,6 @@ import SDLEvent
 type SDLApp t m =
   ( Reflex t
   , MonadHold t m
-  , MonadFix m
-  , MonadRef m
   , Ref m ~ Ref IO
   , ReflexHost t
   , MonadRef (HostFrame t)
@@ -50,8 +48,8 @@ type SDLApp t m =
   ) => EventSelector t SDLEvent
     -> ReaderT S.Renderer (PostBuildT t (PerformEventT t m)) (Event t ())
 
-sdlHost :: S.Renderer -> Maybe Int -> (forall t m. SDLApp t m) -> IO ()
-sdlHost r mFps guest = do
+sdlHostOld :: S.Renderer -> Maybe Int -> (forall t m. SDLApp t m) -> IO ()
+sdlHostOld r mFps guest =
   runSpiderHost $ do
     (ePostBuild, ePostBuildTriggerRef) <- newEventWithTriggerRef
     (eSdl, eSdlTriggerRef) <- newEventWithTriggerRef
@@ -82,7 +80,11 @@ sdlHost r mFps guest = do
           tTarget = maybe tElapsed (1000000 `div`) mFps
         when (tElapsed < tTarget) $ liftIO $ threadDelay (tTarget - tElapsed)
 
-        when (maybe True (all isNothing . mconcat) quit) loop
+        mETickTrigger <- readRef eTickTriggerRef
+        q <- forM mETickTrigger $ \t ->
+          fire [t :=> Identity tEnd] readPhase
+
+        when (isNothing q && maybe True (all isNothing . mconcat) quit) loop
 
     mPostBuildTrigger <- readRef ePostBuildTriggerRef
     quit <- forM mPostBuildTrigger $ \t ->
@@ -91,64 +93,63 @@ sdlHost r mFps guest = do
 
     return ()
 
-{-
-newFanEventWithTriggerRef :: (MonadReflexCreateTrigger t m, MonadRef m, Ref m ~ Ref IO, GCompare k) 
+newFanEventWithTriggerRef :: (MonadReflexCreateTrigger t m, MonadRef m, Ref m ~ Ref IO, GCompare k)
                           => m (EventSelector t k, Ref m (DMap k (EventTrigger t)))
 newFanEventWithTriggerRef = do
   rt <- newRef empty
   es <- newFanEventWithTrigger $ \k t -> do
     modifyRef rt $ insert k t
-    return . modifyRef rt $ delete k
+    return $ modifyRef rt $ delete k
   return (es, rt)
 {-# INLINE newFanEventWithTriggerRef #-}
 
-newSDLEventWithTriggerRef :: (MonadReflexCreateTrigger t m, MonadRef m, Ref m ~ Ref IO) 
-                          => m (EventSelector t SDLEvent, Ref m (DMap SDLEvent (EventTrigger t)))
-newSDLEventWithTriggerRef = do
-  rt <- newRef empty
-  es <- newFanEventWithTrigger $ \k t -> 
-    case k of
-      SDLTimestamp -> do
-        return $ return ()
-      _ -> do
-        modifyRef rt $ insert k t
-        return . modifyRef rt $ delete k
-  return (es, rt)
-{-# INLINE newSDLEventWithTriggerRef #-}
+findTrigger :: GCompare k
+            => DMap k t
+            -> DSum k f
+            -> Maybe (DSum t f)
+findTrigger m (k :=> v) =
+  (:=> v) <$> M.lookup k m
 
-findTrigger :: DMap SDLEvent t 
-            -> DSum SDLEvent Identity 
-            -> Maybe (DSum t Identity)
-findTrigger m (k :=> v) = 
-  (\t -> t :=> v) <$> M.lookup k m
-
-sdlHostNew :: S.Renderer -> (forall t m. SDLApp t m) -> IO ()
-sdlHostNew r myGuest = do
+sdlHost :: S.Renderer -> Maybe Int -> (forall t m. SDLApp t m) -> IO ()
+sdlHost r mFps guest =
   runSpiderHost $ do
-    (postBuild, postBuildTriggerRef) <- newEventWithTriggerRef
-    (eSdl, eSdlTriggerRef) <- newSDLEventWithTriggerRef
+    (ePostBuild, ePostBuildTriggerRef) <- newEventWithTriggerRef
+    (eSdl, eSdlTriggerRef) <- newFanEventWithTriggerRef
 
-    let 
-      g = myGuest eSdl
+    let
+      g = guest eSdl
 
-    (eQuit, FireCommand fire) <- hostPerformEventT $ runPostBuildT (runReaderT g r) postBuild
+    (eQuit, FireCommand fire) <- hostPerformEventT $ runPostBuildT (runReaderT g r) ePostBuild
     hQuit <- subscribeEvent eQuit
 
-    let 
+    let
       readPhase = readEvent hQuit >>= sequence
       canContinue = maybe True (all isNothing)
-      loop = do
-        e <- liftIO SE.waitEvent
-        let se = wrapEvent e
-        sdlTriggers <- readRef eSdlTriggerRef
-        quit <- fire (mapMaybe (findTrigger sdlTriggers) . toList $ se) $ readPhase
-        when (all isNothing quit) loop
 
-    mPostBuildTrigger <- readRef postBuildTriggerRef
-    postBuildQuit <- forM mPostBuildTrigger $ \t ->
-      fire [t :=> Identity ()] $ readPhase
-   
-    when (canContinue postBuildQuit) loop
+      loop = do
+        tStart <- liftIO S.ticks
+
+        es <- liftIO SE.pollEvents
+
+        let ses = wrapEvent <$> es
+        sdlTriggers <- readRef eSdlTriggerRef
+        let triggers = fmap pure . mapMaybe (findTrigger sdlTriggers) $ ses
+        quit <- traverse (\t -> fire t readPhase) triggers
+
+        tEnd <- liftIO S.ticks
+
+        let
+          tElapsed = fromIntegral $ tEnd - tStart
+          tTarget = maybe tElapsed (1000 `div`) mFps
+        when (tElapsed < tTarget) $ liftIO $ S.delay . fromIntegral $ (tTarget - tElapsed)
+
+        q <- fire (mapMaybe (findTrigger sdlTriggers) [SDLTick :=> Identity tEnd]) readPhase
+
+        when (all isNothing q && (all isNothing . mconcat) quit) loop
+
+    mPostBuildTrigger <- readRef ePostBuildTriggerRef
+    quit <- forM mPostBuildTrigger $ \t ->
+      fire [t :=> Identity ()] readPhase
+    when (canContinue quit) loop
 
     return ()
--}
