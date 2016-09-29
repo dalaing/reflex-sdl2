@@ -20,7 +20,6 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader (ask)
 
 import Reflex
-import Reflex.Class
 
 import SDLEvent
 import SDLEventLoop
@@ -50,8 +49,8 @@ cycleColourIndexRight i
   | otherwise = (i + 1) `mod` 6
 
 data Block = Block {
-    colourIndex :: Int
-  , rect :: Rectangle CInt
+    bColourIndex :: Int
+  , bRect :: Rectangle CInt
   }
 
 mkBlock :: Int -> Point V2 Int32 -> Block
@@ -113,15 +112,12 @@ guest sel = do
     eColourRight = void . ffilter (== KeycodeD) $ eKey
     eQuit        = void . ffilter (== KeycodeQ) $ eKey
 
-    eTime =
-      select sel SDLTimestamp
-
   (dLimit :: Dynamic t Int) <- accum (flip ($)) 10 . leftmost $ [
                 succ <$ eLimitUp
     , (max 0 . pred) <$ eLimitDown
     ]
 
-  (bColourIndex :: Behavior t Int) <- accum (flip ($)) 0 . leftmost $ [
+  (bIndex :: Behavior t Int) <- accum (flip ($)) 0 . leftmost $ [
       cycleColourIndexLeft  <$ eColourLeft
     , cycleColourIndexRight <$ eColourRight
     ]
@@ -129,8 +125,8 @@ guest sel = do
   eGameState <- accum (flip ($)) (GameState []) . leftmost $ [
       id <$ ePostBuild
     -- This relies on https://github.com/reflex-frp/reflex/pull/66 
-    -- , addBlock <$> current dLimit <*> bColourIndex <@> eMouseButton
-    , attachWith (\l (i, p) -> addBlock l i p) (current dLimit) $ attachWith (,) bColourIndex eMouseButton
+    -- , addBlock <$> current dLimit <*> bIndex <@> eMouseButton
+    , attachWith (\l (i, p) -> addBlock l i p) (current dLimit) $ attachWith (,) bIndex eMouseButton
     , trimBlocks <$> updated dLimit
     ]
 
@@ -138,7 +134,6 @@ guest sel = do
 
   performEvent_ $ liftIO . render r <$> eGameState
   performEvent_ $ liftIO quit       <$  eQuit
-  performEvent_ $ liftIO . print    <$> eTime
 
   return eQuit
 

@@ -16,21 +16,18 @@ module SDLEventLoop (
 import Data.Maybe (isNothing, mapMaybe)
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad (forever, when, forM, void)
+import Control.Monad (when, forM)
 import Control.Monad.Ref
-import Control.Monad.Fix (MonadFix)
 import Control.Monad.Reader
 import Control.Concurrent (threadDelay)
 import Data.Functor.Identity
 
-import Data.GADT.Show
 import Data.Dependent.Sum
 import Data.Dependent.Map as M
 
 import Reflex
 import Reflex.Host.Class
 import Reflex.PerformEvent.Base
-import Reflex.PostBuild.Class
 
 import qualified SDL as S
 import qualified SDL.Event as SE
@@ -52,12 +49,20 @@ sdlHostOld :: S.Renderer -> Maybe Int -> (forall t m. SDLApp t m) -> IO ()
 sdlHostOld r mFps guest =
   runSpiderHost $ do
     (ePostBuild, ePostBuildTriggerRef) <- newEventWithTriggerRef
+    (eTick, eTickTriggerRef) <- newEventWithTriggerRef
     (eSdl, eSdlTriggerRef) <- newEventWithTriggerRef
 
     let
-      g = guest (fan $ wrapEvent <$> eSdl)
+      eTick' = (\t -> [SDLTick :=> Identity t]) <$> eTick
+      eSdl' = (\e -> [wrapEvent e]) <$> eSdl
+      g = guest . fan . fmap fromList $ mergeWith (++) [eTick', eSdl']
 
-    (eQuit, FireCommand fire) <- hostPerformEventT $ runPostBuildT (runReaderT g r) ePostBuild
+    (eQuit, FireCommand fire) <-
+      hostPerformEventT .
+      flip runPostBuildT ePostBuild .
+      flip runReaderT r $
+      g
+
     hQuit <- subscribeEvent eQuit
 
     let

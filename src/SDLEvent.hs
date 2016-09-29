@@ -21,51 +21,50 @@ import Data.Word
 import Data.GADT.Compare
 import Data.GADT.Show
 import Data.Dependent.Sum
-import Data.Dependent.Map
 
 data SDLEvent a where
-  SDLTimestamp :: SDLEvent Word32
-  SDLWindowShown :: SDLEvent WindowShownEventData    
-  SDLWindowHidden :: SDLEvent WindowHiddenEventData  
-  SDLWindowExposed :: SDLEvent WindowExposedEventData    
-  SDLWindowMoved :: SDLEvent WindowMovedEventData    
-  SDLWindowResized :: SDLEvent WindowResizedEventData    
-  SDLWindowSizeChanged :: SDLEvent WindowSizeChangedEventData    
-  SDLWindowMinimized :: SDLEvent WindowMinimizedEventData    
-  SDLWindowMaximized :: SDLEvent WindowMaximizedEventData    
-  SDLWindowRestored :: SDLEvent WindowRestoredEventData  
-  SDLWindowGainedMouseFocus :: SDLEvent WindowGainedMouseFocusEventData  
-  SDLWindowLostMouseFocus :: SDLEvent WindowLostMouseFocusEventData  
-  SDLWindowGainedKeyboardFocus :: SDLEvent WindowGainedKeyboardFocusEventData    
-  SDLWindowLostKeyboardFocus :: SDLEvent WindowLostKeyboardFocusEventData    
-  SDLWindowClosed :: SDLEvent WindowClosedEventData  
-  SDLKeyboard :: SDLEvent KeyboardEventData  
-  SDLTextEditing :: SDLEvent TextEditingEventData    
-  SDLTextInput :: SDLEvent TextInputEventData    
-  SDLMouseMotion :: SDLEvent MouseMotionEventData    
-  SDLMouseButton :: SDLEvent MouseButtonEventData    
-  SDLMouseWheel :: SDLEvent MouseWheelEventData  
-  SDLJoyAxis :: SDLEvent JoyAxisEventData    
-  SDLJoyBall :: SDLEvent JoyBallEventData    
-  SDLJoyHat :: SDLEvent JoyHatEventData  
-  SDLJoyButton :: SDLEvent JoyButtonEventData    
-  SDLJoyDevice :: SDLEvent JoyDeviceEventData    
-  SDLControllerAxis :: SDLEvent ControllerAxisEventData  
-  SDLControllerButton :: SDLEvent ControllerButtonEventData  
-  SDLControllerDevice :: SDLEvent ControllerDeviceEventData  
+  SDLTick :: SDLEvent Word32
+  SDLWindowShown :: SDLEvent WindowShownEventData
+  SDLWindowHidden :: SDLEvent WindowHiddenEventData
+  SDLWindowExposed :: SDLEvent WindowExposedEventData
+  SDLWindowMoved :: SDLEvent WindowMovedEventData
+  SDLWindowResized :: SDLEvent WindowResizedEventData
+  SDLWindowSizeChanged :: SDLEvent WindowSizeChangedEventData
+  SDLWindowMinimized :: SDLEvent WindowMinimizedEventData
+  SDLWindowMaximized :: SDLEvent WindowMaximizedEventData
+  SDLWindowRestored :: SDLEvent WindowRestoredEventData
+  SDLWindowGainedMouseFocus :: SDLEvent WindowGainedMouseFocusEventData
+  SDLWindowLostMouseFocus :: SDLEvent WindowLostMouseFocusEventData
+  SDLWindowGainedKeyboardFocus :: SDLEvent WindowGainedKeyboardFocusEventData
+  SDLWindowLostKeyboardFocus :: SDLEvent WindowLostKeyboardFocusEventData
+  SDLWindowClosed :: SDLEvent WindowClosedEventData
+  SDLKeyboard :: SDLEvent KeyboardEventData
+  SDLTextEditing :: SDLEvent TextEditingEventData
+  SDLTextInput :: SDLEvent TextInputEventData
+  SDLMouseMotion :: SDLEvent MouseMotionEventData
+  SDLMouseButton :: SDLEvent MouseButtonEventData
+  SDLMouseWheel :: SDLEvent MouseWheelEventData
+  SDLJoyAxis :: SDLEvent JoyAxisEventData
+  SDLJoyBall :: SDLEvent JoyBallEventData
+  SDLJoyHat :: SDLEvent JoyHatEventData
+  SDLJoyButton :: SDLEvent JoyButtonEventData
+  SDLJoyDevice :: SDLEvent JoyDeviceEventData
+  SDLControllerAxis :: SDLEvent ControllerAxisEventData
+  SDLControllerButton :: SDLEvent ControllerButtonEventData
+  SDLControllerDevice :: SDLEvent ControllerDeviceEventData
   SDLQuit :: SDLEvent ()
-  SDLUser :: SDLEvent UserEventData  
-  SDLSysWM :: SDLEvent SysWMEventData    
-  SDLTouchFinger :: SDLEvent TouchFingerEventData    
-  SDLMultiGesture :: SDLEvent MultiGestureEventData  
-  SDLDollarGesture :: SDLEvent DollarGestureEventData    
-  SDLDrop :: SDLEvent DropEventData  
-  SDLClipboardUpdate :: SDLEvent ClipboardUpdateEventData    
+  SDLUser :: SDLEvent UserEventData
+  SDLSysWM :: SDLEvent SysWMEventData
+  SDLTouchFinger :: SDLEvent TouchFingerEventData
+  SDLMultiGesture :: SDLEvent MultiGestureEventData
+  SDLDollarGesture :: SDLEvent DollarGestureEventData
+  SDLDrop :: SDLEvent DropEventData
+  SDLClipboardUpdate :: SDLEvent ClipboardUpdateEventData
   SDLUnknown :: SDLEvent UnknownEventData
 
 numberEvent :: SDLEvent a -> Int
 numberEvent e = case e of
-  SDLTimestamp -> 0
+  SDLTick -> 0
   SDLWindowShown -> 1
   SDLWindowHidden -> 2
   SDLWindowExposed -> 3
@@ -105,176 +104,176 @@ numberEvent e = case e of
   SDLUnknown -> 37
 
 instance GEq SDLEvent where
-  geq a b = 
-    if numberEvent a /= numberEvent b 
+  geq a b =
+    if numberEvent a /= numberEvent b
     then Nothing
     else case (a, b) of
-      (SDLTimestamp, SDLTimestamp) ->
+      (SDLTick, SDLTick) ->
         Just Refl
-      (SDLWindowShown, SDLWindowShown) -> 
+      (SDLWindowShown, SDLWindowShown) ->
         Just Refl
-      (SDLWindowHidden, SDLWindowHidden) -> 
+      (SDLWindowHidden, SDLWindowHidden) ->
         Just Refl
-      (SDLWindowExposed, SDLWindowExposed) -> 
+      (SDLWindowExposed, SDLWindowExposed) ->
         Just Refl
-      (SDLWindowMoved, SDLWindowMoved) -> 
+      (SDLWindowMoved, SDLWindowMoved) ->
         Just Refl
-      (SDLWindowResized, SDLWindowResized) -> 
+      (SDLWindowResized, SDLWindowResized) ->
         Just Refl
-      (SDLWindowSizeChanged, SDLWindowSizeChanged) -> 
+      (SDLWindowSizeChanged, SDLWindowSizeChanged) ->
         Just Refl
-      (SDLWindowMinimized, SDLWindowMinimized) -> 
+      (SDLWindowMinimized, SDLWindowMinimized) ->
         Just Refl
       (SDLWindowMaximized, SDLWindowMaximized) ->
         Just Refl
-      (SDLWindowRestored, SDLWindowRestored) -> 
+      (SDLWindowRestored, SDLWindowRestored) ->
         Just Refl
-      (SDLWindowGainedMouseFocus, SDLWindowGainedMouseFocus) -> 
+      (SDLWindowGainedMouseFocus, SDLWindowGainedMouseFocus) ->
         Just Refl
-      (SDLWindowLostMouseFocus, SDLWindowLostMouseFocus) -> 
+      (SDLWindowLostMouseFocus, SDLWindowLostMouseFocus) ->
         Just Refl
-      (SDLWindowGainedKeyboardFocus, SDLWindowGainedKeyboardFocus) -> 
+      (SDLWindowGainedKeyboardFocus, SDLWindowGainedKeyboardFocus) ->
         Just Refl
-      (SDLWindowLostKeyboardFocus, SDLWindowLostKeyboardFocus) -> 
+      (SDLWindowLostKeyboardFocus, SDLWindowLostKeyboardFocus) ->
         Just Refl
-      (SDLWindowClosed, SDLWindowClosed) -> 
+      (SDLWindowClosed, SDLWindowClosed) ->
         Just Refl
-      (SDLKeyboard, SDLKeyboard) -> 
+      (SDLKeyboard, SDLKeyboard) ->
         Just Refl
-      (SDLTextEditing, SDLTextEditing) -> 
+      (SDLTextEditing, SDLTextEditing) ->
         Just Refl
-      (SDLTextInput, SDLTextInput) -> 
+      (SDLTextInput, SDLTextInput) ->
         Just Refl
-      (SDLMouseMotion, SDLMouseMotion) -> 
+      (SDLMouseMotion, SDLMouseMotion) ->
         Just Refl
-      (SDLMouseButton, SDLMouseButton) -> 
+      (SDLMouseButton, SDLMouseButton) ->
         Just Refl
-      (SDLMouseWheel, SDLMouseWheel) -> 
+      (SDLMouseWheel, SDLMouseWheel) ->
         Just Refl
-      (SDLJoyAxis, SDLJoyAxis) -> 
+      (SDLJoyAxis, SDLJoyAxis) ->
         Just Refl
-      (SDLJoyBall, SDLJoyBall) -> 
+      (SDLJoyBall, SDLJoyBall) ->
         Just Refl
-      (SDLJoyHat, SDLJoyHat) -> 
+      (SDLJoyHat, SDLJoyHat) ->
         Just Refl
-      (SDLJoyButton, SDLJoyButton) -> 
+      (SDLJoyButton, SDLJoyButton) ->
         Just Refl
-      (SDLJoyDevice, SDLJoyDevice) -> 
+      (SDLJoyDevice, SDLJoyDevice) ->
         Just Refl
-      (SDLControllerAxis, SDLControllerAxis) -> 
+      (SDLControllerAxis, SDLControllerAxis) ->
         Just Refl
-      (SDLControllerButton, SDLControllerButton) -> 
+      (SDLControllerButton, SDLControllerButton) ->
         Just Refl
-      (SDLControllerDevice, SDLControllerDevice) -> 
+      (SDLControllerDevice, SDLControllerDevice) ->
         Just Refl
-      (SDLQuit, SDLQuit) -> 
+      (SDLQuit, SDLQuit) ->
         Just Refl
-      (SDLUser, SDLUser) -> 
+      (SDLUser, SDLUser) ->
         Just Refl
-      (SDLSysWM, SDLSysWM) -> 
+      (SDLSysWM, SDLSysWM) ->
         Just Refl
-      (SDLTouchFinger, SDLTouchFinger) -> 
+      (SDLTouchFinger, SDLTouchFinger) ->
         Just Refl
-      (SDLMultiGesture, SDLMultiGesture) -> 
+      (SDLMultiGesture, SDLMultiGesture) ->
         Just Refl
-      (SDLDollarGesture, SDLDollarGesture) -> 
+      (SDLDollarGesture, SDLDollarGesture) ->
         Just Refl
-      (SDLDrop, SDLDrop) -> 
+      (SDLDrop, SDLDrop) ->
         Just Refl
-      (SDLClipboardUpdate, SDLClipboardUpdate) -> 
+      (SDLClipboardUpdate, SDLClipboardUpdate) ->
         Just Refl
-      (SDLUnknown, SDLUnknown) -> 
+      (SDLUnknown, SDLUnknown) ->
         Just Refl
       _ ->
         Nothing
 
 instance GCompare SDLEvent where
-  gcompare a b = 
-    case compare (numberEvent a) (numberEvent b) of 
+  gcompare a b =
+    case compare (numberEvent a) (numberEvent b) of
       LT -> GLT
       GT -> GGT
       EQ -> case (a, b) of
-        (SDLTimestamp, SDLTimestamp) ->
+        (SDLTick, SDLTick) ->
           GEQ
-        (SDLWindowShown, SDLWindowShown) -> 
+        (SDLWindowShown, SDLWindowShown) ->
           GEQ
-        (SDLWindowHidden, SDLWindowHidden) -> 
+        (SDLWindowHidden, SDLWindowHidden) ->
           GEQ
-        (SDLWindowExposed, SDLWindowExposed) -> 
+        (SDLWindowExposed, SDLWindowExposed) ->
           GEQ
-        (SDLWindowMoved, SDLWindowMoved) -> 
+        (SDLWindowMoved, SDLWindowMoved) ->
           GEQ
-        (SDLWindowResized, SDLWindowResized) -> 
+        (SDLWindowResized, SDLWindowResized) ->
           GEQ
-        (SDLWindowSizeChanged, SDLWindowSizeChanged) -> 
+        (SDLWindowSizeChanged, SDLWindowSizeChanged) ->
           GEQ
-        (SDLWindowMinimized, SDLWindowMinimized) -> 
+        (SDLWindowMinimized, SDLWindowMinimized) ->
           GEQ
         (SDLWindowMaximized, SDLWindowMaximized) ->
           GEQ
-        (SDLWindowRestored, SDLWindowRestored) -> 
+        (SDLWindowRestored, SDLWindowRestored) ->
           GEQ
-        (SDLWindowGainedMouseFocus, SDLWindowGainedMouseFocus) -> 
+        (SDLWindowGainedMouseFocus, SDLWindowGainedMouseFocus) ->
           GEQ
-        (SDLWindowLostMouseFocus, SDLWindowLostMouseFocus) -> 
+        (SDLWindowLostMouseFocus, SDLWindowLostMouseFocus) ->
           GEQ
-        (SDLWindowGainedKeyboardFocus, SDLWindowGainedKeyboardFocus) -> 
+        (SDLWindowGainedKeyboardFocus, SDLWindowGainedKeyboardFocus) ->
           GEQ
-        (SDLWindowLostKeyboardFocus, SDLWindowLostKeyboardFocus) -> 
+        (SDLWindowLostKeyboardFocus, SDLWindowLostKeyboardFocus) ->
           GEQ
-        (SDLWindowClosed, SDLWindowClosed) -> 
+        (SDLWindowClosed, SDLWindowClosed) ->
           GEQ
-        (SDLKeyboard, SDLKeyboard) -> 
+        (SDLKeyboard, SDLKeyboard) ->
           GEQ
-        (SDLTextEditing, SDLTextEditing) -> 
+        (SDLTextEditing, SDLTextEditing) ->
           GEQ
-        (SDLTextInput, SDLTextInput) -> 
+        (SDLTextInput, SDLTextInput) ->
           GEQ
-        (SDLMouseMotion, SDLMouseMotion) -> 
+        (SDLMouseMotion, SDLMouseMotion) ->
           GEQ
-        (SDLMouseButton, SDLMouseButton) -> 
+        (SDLMouseButton, SDLMouseButton) ->
           GEQ
-        (SDLMouseWheel, SDLMouseWheel) -> 
+        (SDLMouseWheel, SDLMouseWheel) ->
           GEQ
-        (SDLJoyAxis, SDLJoyAxis) -> 
+        (SDLJoyAxis, SDLJoyAxis) ->
           GEQ
-        (SDLJoyBall, SDLJoyBall) -> 
+        (SDLJoyBall, SDLJoyBall) ->
           GEQ
-        (SDLJoyHat, SDLJoyHat) -> 
+        (SDLJoyHat, SDLJoyHat) ->
           GEQ
-        (SDLJoyButton, SDLJoyButton) -> 
+        (SDLJoyButton, SDLJoyButton) ->
           GEQ
-        (SDLJoyDevice, SDLJoyDevice) -> 
+        (SDLJoyDevice, SDLJoyDevice) ->
           GEQ
-        (SDLControllerAxis, SDLControllerAxis) -> 
+        (SDLControllerAxis, SDLControllerAxis) ->
           GEQ
-        (SDLControllerButton, SDLControllerButton) -> 
+        (SDLControllerButton, SDLControllerButton) ->
           GEQ
-        (SDLControllerDevice, SDLControllerDevice) -> 
+        (SDLControllerDevice, SDLControllerDevice) ->
           GEQ
-        (SDLQuit, SDLQuit) -> 
+        (SDLQuit, SDLQuit) ->
           GEQ
-        (SDLUser, SDLUser) -> 
+        (SDLUser, SDLUser) ->
           GEQ
-        (SDLSysWM, SDLSysWM) -> 
+        (SDLSysWM, SDLSysWM) ->
           GEQ
-        (SDLTouchFinger, SDLTouchFinger) -> 
+        (SDLTouchFinger, SDLTouchFinger) ->
           GEQ
-        (SDLMultiGesture, SDLMultiGesture) -> 
+        (SDLMultiGesture, SDLMultiGesture) ->
           GEQ
-        (SDLDollarGesture, SDLDollarGesture) -> 
+        (SDLDollarGesture, SDLDollarGesture) ->
           GEQ
-        (SDLDrop, SDLDrop) -> 
+        (SDLDrop, SDLDrop) ->
           GEQ
-        (SDLClipboardUpdate, SDLClipboardUpdate) -> 
+        (SDLClipboardUpdate, SDLClipboardUpdate) ->
           GEQ
-        (SDLUnknown, SDLUnknown) -> 
+        (SDLUnknown, SDLUnknown) ->
           GEQ
         _ -> error "This should not happen"
  
 instance GShow SDLEvent where
   gshowsPrec _ a = case a of
-    SDLTimestamp ->
+    SDLTick ->
       showString "Timestamp"
     SDLWindowShown ->
       showString "WindowShown"
@@ -353,7 +352,7 @@ instance GShow SDLEvent where
  
 instance ShowTag SDLEvent Identity where
   showTaggedPrec t n (Identity a) = case t of
-    SDLTimestamp ->
+    SDLTick ->
       showsPrec n a
     SDLWindowShown ->
       showsPrec n a
@@ -430,13 +429,8 @@ instance ShowTag SDLEvent Identity where
     SDLUnknown ->
       showsPrec n a
 
-wrapEvent :: Event -> DMap SDLEvent Identity
-wrapEvent (Event t e) = 
-  fromList [SDLTimestamp :=> Identity t, wrapEvent' e]
-  -- fromList [wrapEvent' e, SDLTimestamp :=> Identity t]
-
-wrapEvent' :: EventPayload -> DSum SDLEvent Identity
-wrapEvent' ep = case ep of
+wrapEvent :: Event -> DSum SDLEvent Identity
+wrapEvent (Event _ e) = case e of
   WindowShownEvent p ->
     SDLWindowShown :=> Identity p
   WindowHiddenEvent p ->
