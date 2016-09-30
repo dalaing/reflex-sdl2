@@ -77,6 +77,17 @@ trimBlocks :: Int -> GameState -> GameState
 trimBlocks n (GameState bs) =
   GameState (take n bs)
 
+
+{- Useful for debugging the FPS capping code
+
+cycleBlocks :: GameState -> GameState
+cycleBlocks (GameState bs) =
+    GameState . fmap cycleBlock $ bs
+  where
+    cycleBlock (Block i r) =
+      Block (cycleColourIndexRight i) r
+-}
+
 renderGameState :: Renderer -> GameState -> IO ()
 renderGameState r (GameState bs) = do
   traverse_ (renderBlock r) bs
@@ -112,6 +123,9 @@ guest sel = do
     eColourRight = void . ffilter (== KeycodeD) $ eKey
     eQuit        = void . ffilter (== KeycodeQ) $ eKey
 
+    eTick =
+      select sel SDLTick
+
   (dLimit :: Dynamic t Int) <- accum (flip ($)) 10 . leftmost $ [
                 succ <$ eLimitUp
     , (max 0 . pred) <$ eLimitDown
@@ -122,7 +136,7 @@ guest sel = do
     , cycleColourIndexRight <$ eColourRight
     ]
 
-  eGameState <- accum (flip ($)) (GameState []) . leftmost $ [
+  bGameState <- accum (flip ($)) (GameState []) . leftmost $ [
       id <$ ePostBuild
     -- This relies on https://github.com/reflex-frp/reflex/pull/66 
     -- , addBlock <$> current dLimit <*> bIndex <@> eMouseButton
@@ -132,7 +146,16 @@ guest sel = do
 
   r <- ask
 
-  performEvent_ $ liftIO . render r <$> eGameState
+  -- performEvent_ $ liftIO . render r <$> bGameState <@ eTick
+  performEvent_ $ liftIO . render r <$> tag bGameState eTick
+
+  -- We could have accumulated the game state into an event and done:
+  --   performEvent_ $ liftIO . render r <$> eGameState
+  -- but then we'd also need to gather events in order to re-render
+  -- whenever other windows were dragged over the top of this window,
+  -- etc...
+  -- It is simpler to just render every tick
+
   performEvent_ $ liftIO quit       <$  eQuit
 
   return eQuit
@@ -142,4 +165,5 @@ main = do
   initializeAll
   window <- createWindow "My SDL Application" defaultWindow
   renderer <- createRenderer window (-1) defaultRenderer
-  sdlHost renderer (Just 60) guest
+  sdlHost renderer (Just 30) guest
+  -- sdlHost renderer Nothing guest
