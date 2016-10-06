@@ -18,7 +18,6 @@ import Data.Maybe (isNothing, mapMaybe)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad (when, unless, forM)
 import Control.Monad.Ref
-import Control.Monad.Reader
 import Control.Concurrent (threadDelay)
 import Data.Functor.Identity
 
@@ -43,7 +42,7 @@ type SDLApp t m =
   , Ref (HostFrame t) ~ Ref IO
   , MonadIO (HostFrame t)
   ) => EventSelector t SDLEvent
-    -> ReaderT S.Renderer (PostBuildT t (PerformEventT t m)) (Event t ())
+    -> PostBuildT t (PerformEventT t m) (Event t ())
 
 {-
 sdlHostOld :: S.Renderer -> Maybe Int -> (forall t m. SDLApp t m) -> IO ()
@@ -117,8 +116,8 @@ findTrigger :: GCompare k
 findTrigger m (k :=> v) =
   (:=> v) <$> M.lookup k m
 
-sdlHost :: S.Renderer -> Maybe Int -> (forall t m. SDLApp t m) -> IO ()
-sdlHost r mFps guest =
+sdlHost :: Maybe Int -> (forall t m. SDLApp t m) -> IO ()
+sdlHost mFps guest =
   runSpiderHost $ do
     (ePostBuild, ePostBuildTriggerRef) <- newEventWithTriggerRef
     (eSdl, eSdlTriggerRef) <- newFanEventWithTriggerRef
@@ -128,8 +127,7 @@ sdlHost r mFps guest =
 
     (eQuit, FireCommand fire) <-
       hostPerformEventT .
-      flip runPostBuildT ePostBuild .
-      flip runReaderT r $
+      flip runPostBuildT ePostBuild $
       g
 
     hQuit <- subscribeEvent eQuit
@@ -157,12 +155,35 @@ sdlHost r mFps guest =
         unless (all isNothing q) $
           writeRef hasQuit True
 
+      -- We _could_ only fire the tick event when we have
+      -- events in this frame that we are registered for.
+      --
+      -- There are two problems with that.
+      --
+      -- If we are after tick-driven rendering, then we need
+      -- to stay subscribed to the various window / WM events so
+      -- that we re-render after our window is obscured / the user
+      -- changes back and forth between some virtual desktops.
+      --
+      -- If we want things to happen only while events of interest are
+      -- happening, we hit a snag if we're filtering events.
+      -- For example, if we're looking for left mouse presses, we're also
+      -- going to get right mouse releases causing a tick, since we're
+      -- fanning the events to SDL granularity, but then the apps do
+      -- further filtering on them.
+      --
+      -- The real solution would be to use a Dynamic for the game state,
+      -- and `updated` for the rendering.
       loopFreeBody = do
         e <- liftIO SE.waitEvent
         sdlTriggers <- readRef eSdlTriggerRef
-        q <- fire (mapMaybe (findTrigger sdlTriggers) [wrapEvent e]) readPhase
-        unless (all isNothing q) $
-          writeRef hasQuit True
+        let triggers = mapMaybe (findTrigger sdlTriggers) [wrapEvent e]
+        case triggers of
+          [] -> return ()
+          _ -> do
+            q <- fire triggers readPhase
+            unless (all isNothing q) $
+              writeRef hasQuit True
 
       loopFree = do
         loopFreeBody
@@ -184,7 +205,7 @@ sdlHost r mFps guest =
           tElapsed = fromIntegral $ 1000 * (tEnd - tStart)
           tTarget = 1000000 `div` fps
 
-        when (tElapsed < tTarget) $ do
+        when (tElapsed < tTarget) $
           liftIO . threadDelay . fromIntegral $ tTarget - tElapsed
 
       loopBound fps = do
