@@ -6,6 +6,7 @@ Stability   : experimental
 Portability : non-portable
 -}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -17,7 +18,6 @@ import Data.Foldable (traverse_)
 
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Reader (ask)
 
 import Reflex
 
@@ -78,8 +78,8 @@ trimBlocks n (GameState bs) =
   GameState (take n bs)
 
 
-{- Useful for debugging the FPS capping code
-
+-- Useful for debugging the FPS capping code
+{-
 cycleBlocks :: GameState -> GameState
 cycleBlocks (GameState bs) =
     GameState . fmap cycleBlock $ bs
@@ -99,8 +99,8 @@ render r gs = do
   renderGameState r gs
   present r
 
-guest :: SDLApp t m
-guest sel = do
+guest :: Renderer -> SDLApp t m
+guest r sel = do
   ePostBuild <- getPostBuild
 
   let
@@ -142,9 +142,8 @@ guest sel = do
     -- , addBlock <$> current dLimit <*> bIndex <@> eMouseButton
     , attachWith (\l (i, p) -> addBlock l i p) (current dLimit) $ attachWith (,) bIndex eMouseButton
     , trimBlocks <$> updated dLimit
+    -- , cycleBlocks <$ eTick
     ]
-
-  r <- ask
 
   -- performEvent_ $ liftIO . render r <$> bGameState <@ eTick
   performEvent_ $ liftIO . render r <$> tag bGameState eTick
@@ -165,5 +164,5 @@ main = do
   initializeAll
   window <- createWindow "My SDL Application" defaultWindow
   renderer <- createRenderer window (-1) defaultRenderer
-  sdlHost renderer (Just 30) guest
-  -- sdlHost renderer Nothing guest
+  sdlHost (Just 30) $ guest renderer
+  -- sdlHost Nothing $ guest renderer
