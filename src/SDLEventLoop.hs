@@ -5,33 +5,35 @@ Maintainer  : dave.laing.80@gmail.com
 Stability   : experimental
 Portability : non-portable
 -}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE TypeFamilies          #-}
 module SDLEventLoop (
     SDLApp
   , sdlHost
   ) where
 
-import Data.Maybe (isNothing, mapMaybe)
+import           Data.Maybe               (isNothing, isJust, mapMaybe)
 
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad (when, unless, forM)
-import Control.Monad.Ref
-import Control.Concurrent (threadDelay)
-import Data.Functor.Identity
+import           Control.Concurrent       (forkIO, killThread, threadDelay)
+import           Control.Concurrent.MVar  (MVar, newEmptyMVar, tryPutMVar,
+                                           tryTakeMVar)
+import           Control.Monad            (forM, void, forever, unless, when)
+import           Control.Monad.IO.Class   (MonadIO, liftIO)
+import           Control.Monad.Ref
+import           Data.Functor.Identity
 
-import Data.Dependent.Sum
-import Data.Dependent.Map as M
+import           Data.Dependent.Map       as M
+import           Data.Dependent.Sum
 
-import Reflex
-import Reflex.Host.Class
-import Reflex.PerformEvent.Base
+import           Reflex
+import           Reflex.Host.Class
+import           Reflex.PerformEvent.Base
 
-import qualified SDL as S
-import qualified SDL.Event as SE
+import qualified SDL                      as S
+import qualified SDL.Event                as SE
 
-import SDLEvent
+import           SDLEvent
 
 type SDLApp t m =
   ( Reflex t
@@ -190,33 +192,35 @@ sdlHost mFps guest =
         fireTick
         continueWith loopFree
 
-      loopBoundBody fps = do
-        tStart <- liftIO S.ticks
+      -- timerLoop :: Int -> IO ThreadId
+      -- we can kill this using killThread on the returned ThreadId
+      timerLoop mTick delay = forkIO . forever $ do
+        threadDelay delay
+        void $ tryPutMVar mTick ()
 
+      loopBoundBody = do
         es <- liftIO SE.pollEvents
         sdlTriggers <- readRef eSdlTriggerRef
         q <- traverse (\e -> fire (mapMaybe (findTrigger sdlTriggers) [wrapEvent e]) readPhase) es
 
         unless (all isNothing  . mconcat $ q) $ writeRef hasQuit True
 
-        tEnd <- liftIO S.ticks
+      loopBoundStart fps = do
+        mTick <- liftIO newEmptyMVar
+        tId <- liftIO . timerLoop mTick $ 1000000 `div` fps
+        loopBound mTick
+        liftIO $ killThread tId
 
-        let
-          tElapsed = fromIntegral $ 1000 * (tEnd - tStart)
-          tTarget = 1000000 `div` fps
-
-        when (tElapsed < tTarget) $
-          liftIO . threadDelay . fromIntegral $ tTarget - tElapsed
-
-      loopBound fps = do
-        loopBoundBody fps
-        fireTick
-        continueWith $ loopBound fps
+      loopBound mTick = do
+        loopBoundBody
+        t <- liftIO $ tryTakeMVar mTick
+        when (isJust t) fireTick
+        continueWith $ loopBound mTick
 
       -- if no FPS is set, we use loopFree
       -- otherwise we use loopBound
       loop =
-        maybe loopFree loopBound mFps
+        maybe loopFree loopBoundStart mFps
 
     fireOpen
     continueWith loop
