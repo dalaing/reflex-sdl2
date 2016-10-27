@@ -157,6 +157,16 @@ sdlHost mFps guest =
         unless (all isNothing q) $
           writeRef hasQuit True
 
+      fireEvent e = do
+        sdlTriggers <- readRef eSdlTriggerRef
+        let triggers = mapMaybe (findTrigger sdlTriggers) [wrapEvent e]
+        case triggers of
+          [] -> return ()
+          _ -> do
+            q <- fire triggers readPhase
+            unless (all isNothing q) $
+              writeRef hasQuit True
+
       -- We _could_ only fire the tick event when we have
       -- events in this frame that we are registered for.
       --
@@ -176,51 +186,35 @@ sdlHost mFps guest =
       --
       -- The real solution would be to use a Dynamic for the game state,
       -- and `updated` for the rendering.
-      loopFreeBody = do
-        e <- liftIO SE.waitEvent
-        sdlTriggers <- readRef eSdlTriggerRef
-        let triggers = mapMaybe (findTrigger sdlTriggers) [wrapEvent e]
-        case triggers of
-          [] -> return ()
-          _ -> do
-            q <- fire triggers readPhase
-            unless (all isNothing q) $
-              writeRef hasQuit True
-
       loopFree = do
-        loopFreeBody
+        e <- liftIO SE.waitEvent
+        fireEvent e
         fireTick
         continueWith loopFree
 
-      -- timerLoop :: Int -> IO ThreadId
-      -- we can kill this using killThread on the returned ThreadId
-      timerLoop mTick delay = forkIO . forever $ do
-        threadDelay delay
-        void $ tryPutMVar mTick ()
+      loopBoundInner targetTick = do
+        currentTick <- liftIO S.ticks
+        me <- if targetTick <= currentTick
+              then return Nothing
+              else S.waitEventTimeout . fromIntegral $ targetTick - currentTick
+        case me of
+          -- if Nothing then fire tick and return
+          Nothing -> fireTick
+          -- if Just then fire event and loop if not quit
+          Just e -> do
+            fireEvent e
+            continueWith $ loopBoundInner targetTick
 
-      loopBoundBody = do
-        es <- liftIO SE.pollEvents
-        sdlTriggers <- readRef eSdlTriggerRef
-        q <- traverse (\e -> fire (mapMaybe (findTrigger sdlTriggers) [wrapEvent e]) readPhase) es
-
-        unless (all isNothing  . mconcat $ q) $ writeRef hasQuit True
-
-      loopBoundStart fps = do
-        mTick <- liftIO newEmptyMVar
-        tId <- liftIO . timerLoop mTick $ 1000000 `div` fps
-        loopBound mTick
-        liftIO $ killThread tId
-
-      loopBound mTick = do
-        loopBoundBody
-        t <- liftIO $ tryTakeMVar mTick
-        when (isJust t) fireTick
-        continueWith $ loopBound mTick
+      loopBound fps = do
+        currentTick <- liftIO S.ticks
+        let targetTick = currentTick + (1000 `div` fromIntegral fps)
+        loopBoundInner targetTick
+        continueWith $ loopBound fps
 
       -- if no FPS is set, we use loopFree
       -- otherwise we use loopBound
       loop =
-        maybe loopFree loopBoundStart mFps
+        maybe loopFree loopBound mFps
 
     fireOpen
     continueWith loop

@@ -145,6 +145,7 @@ guest r sel = do
     -- , cycleBlocks <$ eTick
     ]
 
+  -- This relies on https://github.com/reflex-frp/reflex/pull/66 
   -- performEvent_ $ liftIO . render r <$> bGameState <@ eTick
   performEvent_ $ liftIO . render r <$> tag bGameState eTick
 
@@ -164,5 +165,4 @@ main = do
   initializeAll
   window <- createWindow "My SDL Application" defaultWindow
   renderer <- createRenderer window (-1) defaultRenderer
-  sdlHost (Just 30) $ guest renderer
-  -- sdlHost Nothing $ guest renderer
+  sdlHost (Just 60) $ guest renderer
