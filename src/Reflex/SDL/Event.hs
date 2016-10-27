@@ -8,7 +8,7 @@ Portability : non-portable
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module SDLEvent (
+module Reflex.SDL.Event (
     SDLEvent(..)
   , wrapEvent
   ) where

@@ -8,23 +8,19 @@ Portability : non-portable
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE TypeFamilies          #-}
-module SDLEventLoop (
+module Reflex.SDL.Host (
     SDLApp
   , sdlHost
   ) where
 
-import           Data.Maybe               (isNothing, isJust, mapMaybe)
+import           Data.Maybe               (isNothing, mapMaybe)
 
-import           Control.Concurrent       (forkIO, killThread, threadDelay)
-import           Control.Concurrent.MVar  (MVar, newEmptyMVar, tryPutMVar,
-                                           tryTakeMVar)
-import           Control.Monad            (forM, void, forever, unless, when)
+import           Control.Monad            (forM, unless)
 import           Control.Monad.IO.Class   (MonadIO, liftIO)
 import           Control.Monad.Ref
 import           Data.Functor.Identity
 
 import           Data.Dependent.Map       as M
-import           Data.Dependent.Sum
 
 import           Reflex
 import           Reflex.Host.Class
@@ -33,7 +29,7 @@ import           Reflex.PerformEvent.Base
 import qualified SDL                      as S
 import qualified SDL.Event                as SE
 
-import           SDLEvent
+import           Reflex.SDL.Event
 
 type SDLApp t m =
   ( Reflex t

@@ -21,8 +21,8 @@ import Control.Monad.IO.Class (liftIO)
 
 import Reflex
 
-import SDLEvent
-import SDLEventLoop
+import Reflex.SDL.Event
+import Reflex.SDL.Host
 
 import SDL hiding (Event(..))
 
