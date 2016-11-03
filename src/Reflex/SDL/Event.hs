@@ -22,6 +22,11 @@ import Data.GADT.Compare
 import Data.GADT.Show
 import Data.Dependent.Sum
 
+-- | 'SDLEvent' is used to tag the various event payloads so that we can carry them around in a 'DSum' value.
+--
+-- The 'SDLTick' constructor is used to tag a synthetic "tick" event, with the intent that would be used to drive the rendering process.
+--
+-- The other constructors are used to pass along the various kinds of payloads that from the different kinds of 'Event'.
 data SDLEvent a where
   SDLTick :: SDLEvent Word32
   SDLWindowShown :: SDLEvent WindowShownEventData
@@ -62,7 +67,13 @@ data SDLEvent a where
   SDLClipboardUpdate :: SDLEvent ClipboardUpdateEventData
   SDLUnknown :: SDLEvent UnknownEventData
 
-numberEvent :: SDLEvent a -> Int
+-- | A helper function for use with the 'GEq' and 'GCompare' instances.
+--
+-- We need to be able to compare 'SDLEvent' values.  Since it is a sum 
+-- type then we come up with a canonical numbering of the constructors, 
+-- and then use that for the comparison.
+numberEvent :: SDLEvent a 
+            -> Int
 numberEvent e = case e of
   SDLTick -> 0
   SDLWindowShown -> 1
@@ -189,88 +200,14 @@ instance GEq SDLEvent where
 
 instance GCompare SDLEvent where
   gcompare a b =
-    case compare (numberEvent a) (numberEvent b) of
-      LT -> GLT
-      GT -> GGT
-      EQ -> case (a, b) of
-        (SDLTick, SDLTick) ->
-          GEQ
-        (SDLWindowShown, SDLWindowShown) ->
-          GEQ
-        (SDLWindowHidden, SDLWindowHidden) ->
-          GEQ
-        (SDLWindowExposed, SDLWindowExposed) ->
-          GEQ
-        (SDLWindowMoved, SDLWindowMoved) ->
-          GEQ
-        (SDLWindowResized, SDLWindowResized) ->
-          GEQ
-        (SDLWindowSizeChanged, SDLWindowSizeChanged) ->
-          GEQ
-        (SDLWindowMinimized, SDLWindowMinimized) ->
-          GEQ
-        (SDLWindowMaximized, SDLWindowMaximized) ->
-          GEQ
-        (SDLWindowRestored, SDLWindowRestored) ->
-          GEQ
-        (SDLWindowGainedMouseFocus, SDLWindowGainedMouseFocus) ->
-          GEQ
-        (SDLWindowLostMouseFocus, SDLWindowLostMouseFocus) ->
-          GEQ
-        (SDLWindowGainedKeyboardFocus, SDLWindowGainedKeyboardFocus) ->
-          GEQ
-        (SDLWindowLostKeyboardFocus, SDLWindowLostKeyboardFocus) ->
-          GEQ
-        (SDLWindowClosed, SDLWindowClosed) ->
-          GEQ
-        (SDLKeyboard, SDLKeyboard) ->
-          GEQ
-        (SDLTextEditing, SDLTextEditing) ->
-          GEQ
-        (SDLTextInput, SDLTextInput) ->
-          GEQ
-        (SDLMouseMotion, SDLMouseMotion) ->
-          GEQ
-        (SDLMouseButton, SDLMouseButton) ->
-          GEQ
-        (SDLMouseWheel, SDLMouseWheel) ->
-          GEQ
-        (SDLJoyAxis, SDLJoyAxis) ->
-          GEQ
-        (SDLJoyBall, SDLJoyBall) ->
-          GEQ
-        (SDLJoyHat, SDLJoyHat) ->
-          GEQ
-        (SDLJoyButton, SDLJoyButton) ->
-          GEQ
-        (SDLJoyDevice, SDLJoyDevice) ->
-          GEQ
-        (SDLControllerAxis, SDLControllerAxis) ->
-          GEQ
-        (SDLControllerButton, SDLControllerButton) ->
-          GEQ
-        (SDLControllerDevice, SDLControllerDevice) ->
-          GEQ
-        (SDLQuit, SDLQuit) ->
-          GEQ
-        (SDLUser, SDLUser) ->
-          GEQ
-        (SDLSysWM, SDLSysWM) ->
-          GEQ
-        (SDLTouchFinger, SDLTouchFinger) ->
-          GEQ
-        (SDLMultiGesture, SDLMultiGesture) ->
-          GEQ
-        (SDLDollarGesture, SDLDollarGesture) ->
-          GEQ
-        (SDLDrop, SDLDrop) ->
-          GEQ
-        (SDLClipboardUpdate, SDLClipboardUpdate) ->
-          GEQ
-        (SDLUnknown, SDLUnknown) ->
-          GEQ
-        _ -> error "This should not happen"
- 
+    case geq a b of
+      Just Refl -> GEQ
+      Nothing ->
+        case compare (numberEvent a) (numberEvent b) of
+          LT -> GLT
+          GT -> GGT
+          EQ -> error "instance GCompare SDLEvent: this should not happen"
+
 instance GShow SDLEvent where
   gshowsPrec _ a = case a of
     SDLTick ->
@@ -429,7 +366,12 @@ instance ShowTag SDLEvent Identity where
     SDLUnknown ->
       showsPrec n a
 
-wrapEvent :: Event -> DSum SDLEvent Identity
+-- | Converts and 'Event' from the 'sdl' package into a 'DSum' tagged with the 'SDLEvent' type.
+--
+-- Each of the constructors of 'SDLEvent' has a different type, but 'DSum' lets us carry them 
+-- all around together.
+wrapEvent :: Event 
+          -> DSum SDLEvent Identity
 wrapEvent (Event _ e) = case e of
   WindowShownEvent p ->
     SDLWindowShown :=> Identity p
