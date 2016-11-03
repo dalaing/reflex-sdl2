@@ -123,20 +123,24 @@ guest r sel = do
     eColourRight = void . ffilter (== KeycodeD) $ eKey
     eQuit        = void . ffilter (== KeycodeQ) $ eKey
 
-    eTick =
-      select sel SDLTick
+    -- This is odd in the case where we're not capping the fps
+    -- We get a tick for every SDL event that we're subscribed to,
+    -- even if we're not interested in them (ie mouse moves and presses
+    -- of unknown keys)
+    eTick = select sel SDLTick
 
-  (dLimit :: Dynamic t Int) <- accum (flip ($)) 10 . leftmost $ [
+  dLimit <- accum (flip ($)) 10 . leftmost $ [
                 succ <$ eLimitUp
     , (max 0 . pred) <$ eLimitDown
     ]
 
-  (bIndex :: Behavior t Int) <- accum (flip ($)) 0 . leftmost $ [
+  bIndex <- accum (flip ($)) 0 . leftmost $ [
       cycleColourIndexLeft  <$ eColourLeft
     , cycleColourIndexRight <$ eColourRight
     ]
 
-  bGameState <- accum (flip ($)) (GameState []) . leftmost $ [
+  -- bGameState <- accum (flip ($)) (GameState []) . leftmost $ [
+  (bGameState :: Behavior t GameState) <- accum (flip ($)) (GameState []) . leftmost $ [
       id <$ ePostBuild
     -- This relies on https://github.com/reflex-frp/reflex/pull/66 
     -- , addBlock <$> current dLimit <*> bIndex <@> eMouseButton
