@@ -69,10 +69,10 @@ data SDLEvent a where
 
 -- | A helper function for use with the 'GEq' and 'GCompare' instances.
 --
--- We need to be able to compare 'SDLEvent' values.  Since it is a sum 
--- type then we come up with a canonical numbering of the constructors, 
+-- We need to be able to compare 'SDLEvent' values.  Since it is a sum
+-- type then we come up with a canonical numbering of the constructors,
 -- and then use that for the comparison.
-numberEvent :: SDLEvent a 
+numberEvent :: SDLEvent a
             -> Int
 numberEvent e = case e of
   SDLTick -> 0
@@ -211,7 +211,7 @@ instance GCompare SDLEvent where
 instance GShow SDLEvent where
   gshowsPrec _ a = case a of
     SDLTick ->
-      showString "Timestamp"
+      showString "Tick"
     SDLWindowShown ->
       showString "WindowShown"
     SDLWindowHidden ->
@@ -286,7 +286,7 @@ instance GShow SDLEvent where
       showString "ClipboardUpdate"
     SDLUnknown ->
       showString "Unknown"
- 
+
 instance ShowTag SDLEvent Identity where
   showTaggedPrec t n (Identity a) = case t of
     SDLTick ->
@@ -368,9 +368,9 @@ instance ShowTag SDLEvent Identity where
 
 -- | Converts and 'Event' from the 'sdl' package into a 'DSum' tagged with the 'SDLEvent' type.
 --
--- Each of the constructors of 'SDLEvent' has a different type, but 'DSum' lets us carry them 
+-- Each of the constructors of 'SDLEvent' has a different type, but 'DSum' lets us carry them
 -- all around together.
-wrapEvent :: Event 
+wrapEvent :: Event
           -> DSum SDLEvent Identity
 wrapEvent (Event _ e) = case e of
   WindowShownEvent p ->
