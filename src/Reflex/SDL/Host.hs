@@ -18,13 +18,13 @@ import           Data.Maybe               (isNothing, mapMaybe)
 import           Control.Monad            (forM, unless)
 import           Control.Monad.IO.Class   (MonadIO, liftIO)
 import           Control.Monad.Ref
+import           Control.Monad.Primitive
 import           Data.Functor.Identity
 
 import           Data.Dependent.Map       as M
 
 import           Reflex
 import           Reflex.Host.Class
-import           Reflex.PerformEvent.Base
 
 import qualified SDL                      as S
 import qualified SDL.Event                as SE
@@ -32,12 +32,10 @@ import qualified SDL.Event                as SE
 import           Reflex.SDL.Event
 
 type SDLApp t m =
-  ( Reflex t
-  , MonadHold t m
+  ( MonadHold t m
   , Ref m ~ Ref IO
   , ReflexHost t
-  , MonadRef (HostFrame t)
-  , Ref (HostFrame t) ~ Ref IO
+  , PrimMonad (HostFrame t)
   , MonadIO (HostFrame t)
   ) => EventSelector t SDLEvent
     -> PostBuildT t (PerformEventT t m) (Event t ())
