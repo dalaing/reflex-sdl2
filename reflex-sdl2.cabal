@@ -20,8 +20,8 @@ library
                      , Reflex.SDL.Host
   build-depends:       base          >= 4.8  && < 4.10
                      , reflex        >= 0.5  && < 0.6
-                     , sdl2          >= 2.1  && < 2.2
-                     , dependent-sum >= 0.3  && < 0.4
+                     , sdl2          >= 2.2  && < 2.5
+                     , dependent-sum >= 0.3  && < 0.5
                      , dependent-map >= 0.2  && < 0.3
                      , ref-tf        >= 0.4  && < 0.5
                      , primitive     >= 0.6  && < 0.7
@@ -34,9 +34,9 @@ executable clicky-example
   main-is:             Main.hs
   build-depends:       base          >= 4.8  && < 4.10
                      , reflex        >= 0.5  && < 0.6
-                     , sdl2          >= 2.1  && < 2.2
+                     , sdl2          >= 2.2  && < 2.5
                      , linear        >= 1.20 && < 1.21
-                     , dependent-sum >= 0.3  && < 0.4
+                     , dependent-sum >= 0.3  && < 0.5
                      , dependent-map >= 0.2  && < 0.3
                      , ref-tf        >= 0.4  && < 0.5
                      , primitive     >= 0.6  && < 0.7

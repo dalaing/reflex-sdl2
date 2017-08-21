@@ -46,6 +46,7 @@ data SDLEvent a where
   SDLKeyboard :: SDLEvent KeyboardEventData
   SDLTextEditing :: SDLEvent TextEditingEventData
   SDLTextInput :: SDLEvent TextInputEventData
+  SDLKeymapChanged :: SDLEvent ()
   SDLMouseMotion :: SDLEvent MouseMotionEventData
   SDLMouseButton :: SDLEvent MouseButtonEventData
   SDLMouseWheel :: SDLEvent MouseWheelEventData
@@ -57,6 +58,7 @@ data SDLEvent a where
   SDLControllerAxis :: SDLEvent ControllerAxisEventData
   SDLControllerButton :: SDLEvent ControllerButtonEventData
   SDLControllerDevice :: SDLEvent ControllerDeviceEventData
+  SDLAudioDevice :: SDLEvent AudioDeviceEventData
   SDLQuit :: SDLEvent ()
   SDLUser :: SDLEvent UserEventData
   SDLSysWM :: SDLEvent SysWMEventData
@@ -64,7 +66,7 @@ data SDLEvent a where
   SDLMultiGesture :: SDLEvent MultiGestureEventData
   SDLDollarGesture :: SDLEvent DollarGestureEventData
   SDLDrop :: SDLEvent DropEventData
-  SDLClipboardUpdate :: SDLEvent ClipboardUpdateEventData
+  SDLClipboardUpdate :: SDLEvent ()
   SDLUnknown :: SDLEvent UnknownEventData
 
 -- | A helper function for use with the 'GEq' and 'GCompare' instances.
@@ -93,26 +95,28 @@ numberEvent e = case e of
   SDLKeyboard -> 15
   SDLTextEditing -> 16
   SDLTextInput -> 17
-  SDLMouseMotion -> 18
-  SDLMouseButton -> 19
-  SDLMouseWheel -> 20
-  SDLJoyAxis -> 21
-  SDLJoyBall -> 22
-  SDLJoyHat -> 23
-  SDLJoyButton -> 24
-  SDLJoyDevice -> 25
-  SDLControllerAxis -> 26
-  SDLControllerButton -> 27
-  SDLControllerDevice -> 28
-  SDLQuit -> 29
-  SDLUser -> 30
-  SDLSysWM -> 31
-  SDLTouchFinger -> 32
-  SDLMultiGesture -> 33
-  SDLDollarGesture -> 34
-  SDLDrop -> 35
-  SDLClipboardUpdate -> 36
-  SDLUnknown -> 37
+  SDLKeymapChanged -> 18
+  SDLMouseMotion -> 19
+  SDLMouseButton -> 20
+  SDLMouseWheel -> 21
+  SDLJoyAxis -> 22
+  SDLJoyBall -> 23
+  SDLJoyHat -> 24
+  SDLJoyButton -> 25
+  SDLJoyDevice -> 26
+  SDLControllerAxis -> 27
+  SDLControllerButton -> 28
+  SDLControllerDevice -> 29
+  SDLAudioDevice -> 30
+  SDLQuit -> 31
+  SDLUser -> 32
+  SDLSysWM -> 33
+  SDLTouchFinger -> 34
+  SDLMultiGesture -> 35
+  SDLDollarGesture -> 36
+  SDLDrop -> 37
+  SDLClipboardUpdate -> 38
+  SDLUnknown -> 39
 
 instance GEq SDLEvent where
   geq a b =
@@ -155,6 +159,8 @@ instance GEq SDLEvent where
         Just Refl
       (SDLTextInput, SDLTextInput) ->
         Just Refl
+      (SDLKeymapChanged, SDLKeymapChanged) ->
+        Just Refl
       (SDLMouseMotion, SDLMouseMotion) ->
         Just Refl
       (SDLMouseButton, SDLMouseButton) ->
@@ -176,6 +182,8 @@ instance GEq SDLEvent where
       (SDLControllerButton, SDLControllerButton) ->
         Just Refl
       (SDLControllerDevice, SDLControllerDevice) ->
+        Just Refl
+      (SDLAudioDevice, SDLAudioDevice) ->
         Just Refl
       (SDLQuit, SDLQuit) ->
         Just Refl
@@ -246,6 +254,8 @@ instance GShow SDLEvent where
       showString "TextEditing"
     SDLTextInput ->
       showString "TextInput"
+    SDLKeymapChanged ->
+      showString "KeymapChanged"
     SDLMouseMotion ->
       showString "MouseMotion"
     SDLMouseButton ->
@@ -268,6 +278,8 @@ instance GShow SDLEvent where
       showString "ControllerButton"
     SDLControllerDevice ->
       showString "ControllerDevice"
+    SDLAudioDevice ->
+      showString "AudioDevice"
     SDLQuit ->
       showString "Quit"
     SDLUser ->
@@ -325,6 +337,8 @@ instance ShowTag SDLEvent Identity where
       showsPrec n a
     SDLTextInput ->
       showsPrec n a
+    SDLKeymapChanged ->
+      showsPrec n a
     SDLMouseMotion ->
       showsPrec n a
     SDLMouseButton ->
@@ -346,6 +360,8 @@ instance ShowTag SDLEvent Identity where
     SDLControllerButton ->
       showsPrec n a
     SDLControllerDevice ->
+      showsPrec n a
+    SDLAudioDevice ->
       showsPrec n a
     SDLQuit ->
       showsPrec n a
@@ -407,6 +423,8 @@ wrapEvent (Event _ e) = case e of
     SDLTextEditing :=> Identity p
   TextInputEvent p ->
     SDLTextInput :=> Identity p
+  KeymapChangedEvent ->
+    SDLKeymapChanged :=> Identity ()
   MouseMotionEvent p ->
     SDLMouseMotion :=> Identity p
   MouseButtonEvent p ->
@@ -429,6 +447,8 @@ wrapEvent (Event _ e) = case e of
     SDLControllerButton :=> Identity p
   ControllerDeviceEvent p ->
     SDLControllerDevice :=> Identity p
+  AudioDeviceEvent p ->
+    SDLAudioDevice :=> Identity p
   QuitEvent ->
     SDLQuit :=> Identity ()
   UserEvent p ->
@@ -443,7 +463,7 @@ wrapEvent (Event _ e) = case e of
     SDLDollarGesture :=> Identity p
   DropEvent p ->
     SDLDrop :=> Identity p
-  ClipboardUpdateEvent p ->
-    SDLClipboardUpdate :=> Identity p
+  ClipboardUpdateEvent ->
+    SDLClipboardUpdate :=> Identity ()
   UnknownEvent p ->
     SDLUnknown :=> Identity p
